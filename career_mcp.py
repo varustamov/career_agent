@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """Local MCP bridge. Search controls require a running dashboard; no submissions."""
-import json, os, urllib.request
+import json, os, urllib.error, urllib.request
 import career_agent as agent
 from mcp.server.fastmcp import FastMCP
 
@@ -22,6 +22,13 @@ def _dashboard_request(path, body=None):
         with opener.open(base+'/api/jobs',timeout=5) as response: token=json.load(response)['token']
         request=urllib.request.Request(base+path,data=json.dumps(body).encode(),headers={'Content-Type':'application/json','Origin':base,'X-Career-Token':token},method='POST')
         with opener.open(request,timeout=180) as response: return json.load(response)
+    except urllib.error.HTTPError as exc:
+        with exc:
+            try:
+                error=json.load(exc).get('error') if exc.code==400 else None
+            except (ValueError,AttributeError):
+                error=None
+        raise RuntimeError(error or f'Dashboard rejected the request (HTTP {exc.code}).') from exc
     except (OSError,KeyError) as exc:
         raise RuntimeError('Dashboard unavailable or request failed; start Career Agent with the same CAREER_PORT.') from exc
 
@@ -80,14 +87,14 @@ def ai_workflow_status() -> dict:
 
 @mcp.tool()
 def configure_ai_workflow(enabled: bool, provider: str, interval_minutes: int, search_first: bool) -> dict:
-    """Configure periodic AI reviews only at the user's explicit request. Sends profile and jobs to the selected provider when run. Requires the dashboard to remain running. Never applies to jobs."""
+    """Configure periodic AI reviews only at the user's explicit request. Sharing consent for this provider must already be saved in the dashboard. Requires the dashboard to remain running. Never applies to jobs."""
     if type(enabled) is not bool or provider not in ('codex','claude') or type(interval_minutes) is not int or not 60<=interval_minutes<=10080 or type(search_first) is not bool:
         raise ValueError('Invalid AI workflow settings')
     return _dashboard_request('/api/ai', {'enabled':enabled,'provider':provider,'interval_minutes':interval_minutes,'search_first':search_first})
 
 @mcp.tool()
 def run_ai_review() -> dict:
-    """Start a review using saved AI settings only when requested. Sends profile and jobs to the AI provider; never submits an application."""
+    """Start a review using saved AI settings when requested. The selected provider needs sharing consent saved in the dashboard. Never submits an application."""
     return _dashboard_request('/api/ai/run', {})
 
 if __name__ == '__main__':

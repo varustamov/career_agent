@@ -23,23 +23,37 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: '3.12'
-      - name: Install Linux Tk
+      - name: Install Linux Tk and virtual display
         if: runner.os == 'Linux'
-        run: sudo apt-get update && sudo apt-get install -y python3-tk
+        run: sudo apt-get update && sudo apt-get install -y python3-tk xvfb xauth
       - run: python -m pip install pyinstaller==6.17.0 -r requirements-mcp.txt
       - run: python -m unittest discover -s tests
       - name: Build macOS app
         if: runner.os == 'macOS'
         run: |
+          test "$(uname -m)" = arm64
           python -m PyInstaller --noconfirm --windowed --icon assets/icon.icns --name 'Career Agent' --add-data 'dashboard:dashboard' desktop.py
           mkdir -p build/dmg
-          cp -R 'dist/Career Agent.app' 'build/dmg/Career Agent.app'
+          ditto 'dist/Career Agent.app' 'build/dmg/Career Agent.app'
           ln -s /Applications build/dmg/Applications
           hdiutil create -volname 'Career Agent' -srcfolder build/dmg -ov -format UDZO dist/Career-Agent-macOS-arm64.dmg
-      - name: Build Windows executable
+      - name: Test installed macOS app
+        if: runner.os == 'macOS'
+        run: |
+          staging=$(mktemp -d)
+          mkdir "$staging/mount"
+          hdiutil verify dist/Career-Agent-macOS-arm64.dmg
+          hdiutil attach -readonly -nobrowse -mountpoint "$staging/mount" dist/Career-Agent-macOS-arm64.dmg
+          trap 'hdiutil detach "$staging/mount"' EXIT
+          ditto "$staging/mount/Career Agent.app" "$staging/Career Agent.app"
+          python tests/smoke_desktop_package.py "$staging/Career Agent.app/Contents/MacOS/Career Agent"
+      - name: Build Windows portable executable
         if: runner.os == 'Windows'
         shell: pwsh
-        run: python -m PyInstaller --noconfirm --onefile --windowed --icon assets/icon.ico --name Career-Agent --add-data 'dashboard;dashboard' desktop.py
+        run: python -m PyInstaller --noconfirm --onefile --windowed --icon assets/icon.ico --name Career-Agent-Windows-x64 --add-data 'dashboard:dashboard' desktop.py
+      - name: Test Windows portable executable
+        if: runner.os == 'Windows'
+        run: python tests/smoke_desktop_package.py dist/Career-Agent-Windows-x64.exe
       - name: Build Linux package
         if: runner.os == 'Linux'
         run: |
@@ -47,9 +61,14 @@ jobs:
           mkdir -p build/deb/DEBIAN build/deb/usr/bin build/deb/usr/share/applications build/deb/usr/share/icons/hicolor/256x256/apps
           install -m 755 dist/career-agent build/deb/usr/bin/career-agent
           install -m 644 assets/icon.png build/deb/usr/share/icons/hicolor/256x256/apps/career-agent.png
-          printf 'Package: career-agent\nVersion: 0.1.0\nSection: utils\nPriority: optional\nArchitecture: amd64\nMaintainer: Career Agent\nDescription: Private job-search dashboard\n' > build/deb/DEBIAN/control
+          printf 'Package: career-agent\nVersion: 0.1.0\nSection: utils\nPriority: optional\nArchitecture: amd64\nMaintainer: Career Agent\nDepends: libc6 (>= 2.35), ca-certificates\nDescription: Private job-search dashboard\n' > build/deb/DEBIAN/control
           printf '[Desktop Entry]\nName=Career Agent\nExec=/usr/bin/career-agent\nIcon=career-agent\nType=Application\nCategories=Office;\nTerminal=false\n' > build/deb/usr/share/applications/career-agent.desktop
-          dpkg-deb --build build/deb dist/career-agent-linux-amd64.deb
+          dpkg-deb -Zxz --root-owner-group --build build/deb dist/career-agent-linux-amd64.deb
+      - name: Install and test Linux package
+        if: runner.os == 'Linux'
+        run: |
+          sudo apt-get install -y ./dist/career-agent-linux-amd64.deb
+          xvfb-run --auto-servernum python tests/smoke_desktop_package.py /usr/bin/career-agent
       - uses: actions/upload-artifact@v4
         with:
           name: career-agent-${{ matrix.platform }}

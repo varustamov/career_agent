@@ -64,6 +64,7 @@ def configure_ai(body):
     return {'config':config,'schedule':ai_scheduler.status()}
 
 def start_ai_background():
+    ai_workflow.require_profile_share(ai_workflow.get_config()['provider'])
     if ai_lock.locked(): raise ValueError('AI review already running')
     def run():
         try: run_ai()

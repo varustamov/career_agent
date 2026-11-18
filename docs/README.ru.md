@@ -2,16 +2,16 @@
 
 Локальный прототип поиска вакансий и управления решениями. Интерфейс RU/EN и светлая/тёмная тема. Python 3.10+; дополнительных библиотек для запуска не требуется.
 
-## Запуск на macOS с Yandex Browser
+## Запуск из исходников
 
-Дважды откройте `start-yandex.command`, либо:
+Запустите дашборд командой:
 
 ```bash
 cd /path/to/ai-career-agent
 python3 dashboard_server.py
 ```
 
-Откройте в любом браузере http://127.0.0.1:8765. Остановка — Ctrl+C. `CAREER_PORT` меняет порт сервера; стартовый скрипт Yandex использует порт 8765.
+Откройте в любом браузере http://127.0.0.1:8765. Остановка — Ctrl+C. `CAREER_PORT` меняет порт сервера.
 
 ## Профиль
 
@@ -58,7 +58,7 @@ claude mcp add --transport stdio --scope local career-agent -- python3 "$PWD/car
 
 ## Публикация и конфиденциальность
 
-Не публикуйте SQLite-базы, резюме, фотографии, документы, секреты, логи и персональные результаты поиска. До публикации проверьте файлы командой `git status --short` после инициализации репозитория. Прежде чем объявлять продукт готовым к публичному использованию, необходима проверка безопасности, корректности источников и лицензий. В проекте пока нет выбранной лицензии — выберите её перед публикацией.
+Не публикуйте SQLite-базы, резюме, фотографии, документы, секреты, логи и персональные результаты поиска. До публикации проверьте файлы командой `git status --short` после инициализации репозитория. Прежде чем объявлять продукт готовым к публичному использованию, необходима проверка безопасности, корректности источников и лицензий. Исходный код доступен по лицензии [MIT](../LICENSE).
 
 ## Проверка
 
@@ -68,7 +68,7 @@ python3 -m unittest discover -s tests
 
 ## Status of supported boards
 
-The first integration pass was exercised against live APIs: Ashby (`openai`), Lever (`leverdemo`), Arbeitnow and Remotive returned data. SmartRecruiters returned a valid response for `Visa` but no postings; it has not been verified against a non-empty board. Search only retrieves the first page for paginated sources; company-board discovery, cross-source deduplication and a source-health dashboard are not yet implemented. Greenhouse/Lever/Ashby/SmartRecruiters require configured board IDs.
+The first integration pass was exercised against live APIs: Ashby (`openai`), Lever (`leverdemo`), Arbeitnow and Remotive returned data. SmartRecruiters returned jobs for `BoschGroup` and `Sportradar` in a live check. Search only retrieves the first page for paginated sources; company-board discovery, cross-source deduplication and a source-health dashboard are not yet implemented. Greenhouse/Lever/Ashby/SmartRecruiters require configured board IDs.
 
 
 ## Разрешённые способы подключения
