@@ -1,0 +1,24 @@
+[Unit]
+Description=Career Agent (private loopback dashboard)
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=careeragent
+Group=careeragent
+WorkingDirectory=/opt/career-agent
+Environment=CAREER_PORT=18765
+Environment=CAREER_SERVER_MODE=1
+Environment=CAREER_DB_PATH=/var/lib/career-agent/jobs.sqlite3
+ExecStart=/usr/bin/python3 /opt/career-agent/dashboard_server.py
+Restart=on-failure
+RestartSec=5
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=strict
+ProtectHome=true
+ReadWritePaths=/var/lib/career-agent
+
+[Install]
+WantedBy=multi-user.target
